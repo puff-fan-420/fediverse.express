@@ -11,13 +11,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/CuteAP/fediverse.express/server"
+	"github.com/CuteAP/fediverse.express/server/srvcommon"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"golang.org/x/oauth2"
 )
 
-func hitEndpoint(method string, endpoint string, token string, body io.Reader, expectStatusCode int, response interface{}) error {
+func (d *DigitalOcean) hitEndpoint(method string, endpoint string, token string, body io.Reader, expectStatusCode int, response interface{}) error {
 	req, err := http.NewRequest(method, fmt.Sprintf("https://api.digitalocean.com/v2/%s", endpoint), body)
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func hitEndpoint(method string, endpoint string, token string, body io.Reader, e
 		req.Header.Add("Content-Type", "application/json")
 	}
 
-	resp, err := server.HTTPClient.Do(req)
+	resp, err := d.cl.Do(req)
 	if err != nil {
 		return err
 	}
@@ -40,14 +40,23 @@ func hitEndpoint(method string, endpoint string, token string, body io.Reader, e
 		xb = []byte("could not read request body")
 	}
 
-	if resp.StatusCode != expectStatusCode {
+	if resp.StatusCode != expectStatusCode { // sus
 		return fmt.Errorf("expected status code %d, got %d %s", expectStatusCode, resp.StatusCode, xb)
 	}
 
 	return json.Unmarshal(xb, response)
 }
 
-type DigitalOcean struct{}
+type DigitalOcean struct {
+	cl *http.Client
+}
+
+// New creates a new instance of the DigitalOcean provider
+func New() *DigitalOcean {
+	return &DigitalOcean{
+		cl: &http.Client{},
+	}
+}
 
 func (d *DigitalOcean) OAuth2() *oauth2.Config {
 	return &oauth2.Config{
@@ -107,7 +116,7 @@ var regions = []string{"nyc1", "nyc3", "sfo3"}
 
 func (d *DigitalOcean) CreateServer(token string, sshKey interface{}) (*string, *string, error) {
 	droplet := &DropletCreate{
-		Name:    server.RandomString(10) + ".fediverse.express",
+		Name:    srvcommon.RandomString(10) + ".fediverse.express",
 		Region:  regions[rand.Intn(len(regions))],
 		Size:    "s-1vcpu-2gb",
 		Image:   "ubuntu-20-04-x64",
@@ -123,7 +132,7 @@ func (d *DigitalOcean) CreateServer(token string, sshKey interface{}) (*string, 
 	}
 
 	xdroplet := &Droplet{}
-	err = hitEndpoint("POST", "droplets", token, bytes.NewReader(jx), 202, xdroplet)
+	err = d.hitEndpoint("POST", "droplets", token, bytes.NewReader(jx), 202, xdroplet)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Droplet creation failed: %v", err)
 	}
@@ -131,7 +140,7 @@ func (d *DigitalOcean) CreateServer(token string, sshKey interface{}) (*string, 
 	for xdroplet.Droplet.Status != "active" {
 		time.Sleep(2 * time.Second)
 
-		err := hitEndpoint("GET", fmt.Sprintf("droplets/%d", xdroplet.Droplet.ID), token, nil, 200, xdroplet)
+		err := d.hitEndpoint("GET", fmt.Sprintf("droplets/%d", xdroplet.Droplet.ID), token, nil, 200, xdroplet)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -158,7 +167,7 @@ func (d *DigitalOcean) CreateServer(token string, sshKey interface{}) (*string, 
 
 func (d *DigitalOcean) CreateSSHKey(token string, sshKey string) (interface{}, error) {
 	jx, err := json.Marshal(SSHKeyCreate{
-		Name:      server.RandomString(10) + ".fediverse.express",
+		Name:      srvcommon.RandomString(10) + ".fediverse.express",
 		PublicKey: sshKey,
 	})
 	if err != nil {
@@ -166,7 +175,7 @@ func (d *DigitalOcean) CreateSSHKey(token string, sshKey string) (interface{}, e
 	}
 
 	key := SSHKeyCreated{}
-	err = hitEndpoint("POST", "account/keys", token, bytes.NewReader(jx), 201, &key)
+	err = d.hitEndpoint("POST", "account/keys", token, bytes.NewReader(jx), 201, &key)
 	if err != nil {
 		return nil, err
 	}
