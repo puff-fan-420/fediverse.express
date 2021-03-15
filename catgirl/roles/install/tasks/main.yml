@@ -1,0 +1,78 @@
+- name: Create Misskey directory
+  file:
+    path: /opt/misskey
+    state: directory
+    mode: 0755
+    owner: misskey
+  become: yes
+
+- name: Clone Misskey
+  git:
+    repo: https://github.com/syuilo/misskey.git
+    dest: /opt/misskey
+    version: master
+  become: yes
+  become_user: misskey
+
+- name: Install Misskey npm dependencies (this will take a moment...)
+  command:
+    chdir: /opt/misskey
+    cmd: npx -y yarn
+  become: yes
+  become_user: misskey
+
+- name: Copy Misskey default configuration
+  copy:
+    src: /opt/misskey/.config/example.yml
+    remote_src: true
+    dest: /opt/misskey/.config/default.yml
+  become: yes
+  become_user: misskey
+
+- name: Configure Misskey domain
+  replace:
+    path: /opt/misskey/.config/default.yml
+    regexp: "^url: https\\:\\/\\/example\\.tld\\/$"
+    replace: "url: https://{{ domain }}/"
+  become: yes
+  become_user: misskey
+
+- name: Configure Misskey PostgreSQL user
+  replace:
+    path: /opt/misskey/.config/default.yml
+    regexp: "^(  user: )example-misskey-user$"
+    replace: '\1misskey'
+  become: yes
+  become_user: misskey
+
+- name: Configure Misskey PostgreSQL password
+  replace:
+    path: /opt/misskey/.config/default.yml
+    regexp: "^(?P<prefix>  pass: )example-misskey-pass$"
+    replace: "\\g<prefix>{{ lookup('password', '.catgirl/{{ domain }}/postgresql length=40') }}"
+  become: yes
+  become_user: misskey
+
+- name: Configure Misskey port
+  replace:
+    path: /opt/misskey/.config/default.yml
+    regexp: "^#port: 3000"
+    replace: "port: 3000"
+  become: yes
+  become_user: misskey
+
+- name: Build Misskey (this will take a moment...)
+  command:
+    chdir: /opt/misskey
+    cmd: npx -y yarn build
+  become: yes
+  become_user: misskey
+  environment:
+    NODE_ENV: production
+
+- name: Run migrations
+  command:
+    chdir: /opt/misskey
+    cmd: npx yarn migrate
+  become: yes
+  become_user: misskey

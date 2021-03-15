@@ -1,0 +1,7 @@
+*.key
+catgirl.software
+.catgirl
+.env
+fediverse.express
+.DS_Store
+._*

@@ -1,0 +1,88 @@
+        Congratulations! Your instance is now set up.<br><br>
+
+        Before you do anything else, <b>SAVE this file</b> by pressing Ctrl/Command-S. It contains everything you will need to access your instance, and manage it if necessary.<br><br>
+
+        When managing your instance becomes a feature of fediverse.express, <b>you will need this file to take advantage of it.</b><br><br>
+
+        <table style="border: 1px" border=1>
+            <tr>
+                <td>
+                    Your instance's domain name
+                </td>
+                <td id="domain">
+                    %s
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Your instance's IP address
+                </td>
+                <td id="ipv4">
+                    %s
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Your instance's SSH private key<br><br>
+                    <b>Treat this like a password. Sharing this will grant others full access to your server and instance.</b><br><br>
+                    <a href="data:text/plain;charset=utf-8,%s" download="id_rsa">Download your SSH private key</a>
+                </td>
+                <td>
+                    <pre id="privateKey">
+%s
+                    </pre>
+                </td>
+            </tr>
+        </table>
+
+        <h2>So, what do I do now?</h2>
+
+        <ol>
+            <li>
+                <b>Create your admin account.</b> Head to the instance above and provide the username and password to register your account and log in. (N.B.: your "fediverse handle" is @<i>the username you created</i>@<i>your domain</i>).
+            </li>
+            <li>
+                <b>Follow cool people.</b> While your instance is relatively quiet right now - it doesn't federate on its own - you can visit the "Whole Known Network" tab on other instances to find cool people to follow.
+                Here are the TWKN tabs on <a href="https://fedi.absturztau.be/main/all" target="_blank">fedi.absturztau.be</a>, <a href="https://shitposter.club/main/all" target="_blank">shitposter.club</a>, and <a href="https://cdrom.tokyo/main/all" target="_blank">cdrom.tokyo</a>.
+                If you see someone you like, click their picture, then "Remote follow", and insert your "fediverse handle" to follow them. You can also search for them on your instance by typing their full handle into "Search" tool. Soon, you'll follow enough people that you'll find new, cool people via people you follow.
+            </li>
+            <li>
+                <b>Don't be afraid to like, repeat, or reply.</b> Contrary to other social networks, replying is actively encouraged, even to people you don't know. Don't be shy - just post!
+            </li>
+        </ol>
+
+        <h2>What should I avoid?</h2>
+
+        I won't tell you how to run your instance - and don't listen to others that suggest otherwise - but I do have a few things that you should avoid in order to maximize the positive experiences that you'll have on fedi.
+
+        <ul>
+            <li>
+                <b>Fedposting.</b> Making credible threats is not good optics. There are glow-in-the-darks (a tongue-in-cheek term for FBI agents) on the fediverse, as there are anywhere.
+            </li>
+            <li>
+                <b>Anything else in violation of US law.</b> Your service is hosted in the US and is governed by its laws and your provider's acceptable use policy. Violating either will get your server terminated and may earn you a free ride in a police car.
+            </li>
+            <li>
+                <b>Participating in drama.</b> If you do decide to dip your toes in, make sure you're on the side that's laughing, not being laughed at.
+            </li>
+            <li>
+                <b>Making enemies you don't want.</b> Do not bang on someone unless you're ready to be banged on back.
+            </li>
+            <li>
+                <b>Breaking anonymity.</b> Do not post in a traceable manner if you do not want people to find you in real life.
+            </li>
+            <li>
+                <b>Oversharing.</b>
+            </li>
+        </ul>
+
+        <h2>How do I log into the server running my instance?</h2>
+
+        Log in via SSH using the private key embedded in this file. The username to use is "root", or "ubuntu" if you deployed via AWS. Here's an example of how you might do that:<br>
+
+        <pre>ssh -i ~/Downloads/id_rsa root@your-domain.tld</pre>
+
+        Soon, you will be able to upgrade your instance directly from fediverse.express, as long as you have this file. Stay tuned to @fediverse_express@cdrom.tokyo for more info!<br><br>
+
+        <b>Enjoy hopping into fedi! We can't wait to see you.</b><br>
+        &heartsuit; fediverse.express

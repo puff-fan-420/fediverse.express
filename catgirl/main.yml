@@ -1,0 +1,9 @@
+---
+- hosts: all
+  roles:
+    - role: deps
+    - role: sys
+    - role: postgres
+    - role: install
+    - role: nginx
+    - role: post-install

@@ -1,0 +1,75 @@
+- name: Ensure systemd-timesyncd is running correctly (systemd)
+  systemd:
+    name: systemd-timesyncd
+    state: restarted
+  when: ansible_service_mgr == "systemd"
+  become: yes
+
+# https://stackoverflow.com/a/63720716
+- name: Stop the Misskey service, if exists
+  shell: if systemctl is-enabled --quiet misskey; then systemctl stop misskey && echo stopped; fi
+  register: output
+  changed_when: "'stopped' in output.stdout"
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Add PostgreSQL APT key (Ubuntu/Debian)
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    id: B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
+    state: present
+  when: ansible_facts['os_family'] == "Debian"
+  become: yes
+
+- name: Install PostgreSQL APT repository (Ubuntu/Debian)
+  apt_repository:
+    repo: deb https://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main
+    state: present
+  when: ansible_facts['os_family'] == "Debian"
+  become: yes
+
+- name: Add NodeSource APT key (Ubuntu/Debian)
+  apt_key:
+    url: https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+    id: 9FD3B784BC1C6FC31A8A0A1C1655A0AB68576280
+    state: present
+  when: ansible_facts['os_family'] == "Debian"
+  become: yes
+
+- name: Install NodeSource APT repository (Ubuntu/Debian)
+  apt_repository:
+    repo: deb https://deb.nodesource.com/node_15.x {{ ansible_distribution_release }} main
+    state: present
+  when: ansible_facts['os_family'] == "Debian"
+  become: yes
+
+- name: Ensure all packages are updated (Ubuntu/Debian)
+  apt:
+    name:
+      - nginx
+      - postgresql
+      - nodejs
+      - redis-server
+      - python3-psycopg2
+      - acl
+      - build-essential
+    state: latest
+  when: ansible_facts['os_family'] == "Debian"
+  become: yes
+
+- name: Install Certbot snap
+  community.general.snap:
+    name: certbot
+    classic: yes
+    state: present
+  become: yes
+
+- name: Ensure all dependent services are started
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nginx
+    - postgresql
+    - redis-server
+  become: yes

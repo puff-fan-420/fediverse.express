@@ -1,0 +1,32 @@
+- name: Obtain certificate
+  command:
+    cmd: "/snap/bin/certbot certonly -n --agree-tos -m {{ email }} --webroot -w /var/www/html -d {{ domain }}"
+  become: yes
+
+- name: Copy nginx configuration file
+  copy:
+    src: /opt/misskey/docs/examples/misskey.nginx
+    remote_src: yes
+    dest: /etc/nginx/sites-available/misskey.conf
+  become: yes
+
+- name: Modify server name in nginx config
+  replace:
+    path: /etc/nginx/sites-available/misskey.conf
+    regexp: "example\\.tld"
+    replace: "{{ domain }}"
+  become: yes
+
+- name: Enable nginx configuration
+  file:
+    src: /etc/nginx/sites-available/misskey.conf
+    dest: /etc/nginx/sites-enabled/misskey.conf
+    state: link
+  become: yes
+
+- name: Restart nginx
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes
+  become: yes

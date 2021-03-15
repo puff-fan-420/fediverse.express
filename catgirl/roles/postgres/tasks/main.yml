@@ -1,0 +1,26 @@
+- name: Create Misskey database
+  community.postgresql.postgresql_db:
+    name: misskey
+    state: present
+  become: yes
+  become_user: postgres
+
+- name: Create Misskey PostgreSQL role
+  community.postgresql.postgresql_user:
+    db: misskey
+    name: misskey
+    password: "{{ lookup('password', '.catgirl/{{ domain }}/postgresql length=40') }}"
+    expires: infinity
+    state: present
+  become: yes
+  become_user: postgres
+
+- name: Grant permissions to Misskey PostgreSQL role
+  community.postgresql.postgresql_privs:
+    db: misskey
+    role: misskey
+    objs: ALL_IN_SCHEMA
+    privs: SELECT,INSERT,UPDATE,DELETE
+    state: present
+  become: yes
+  become_user: postgres

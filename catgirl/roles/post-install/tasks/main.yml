@@ -1,0 +1,13 @@
+- name: Copy Misskey service
+  copy:
+    src: files/misskey.service
+    dest: /etc/systemd/system/misskey.service
+  become: yes
+  when: ansible_service_mgr == "systemd"
+
+- name: Restart Misskey service
+  service:
+    name: misskey
+    enabled: yes
+    state: restarted
+  become: yes

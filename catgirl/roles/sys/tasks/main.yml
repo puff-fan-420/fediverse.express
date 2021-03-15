@@ -1,0 +1,42 @@
+- name: Add Misskey group
+  user:
+    name: misskey
+    system: yes
+    state: present
+  become: yes
+
+- name: Add Misskey user
+  user:
+    name: misskey
+    comment: Misskey
+    group: misskey
+    password: !
+    create_home: no
+    shell: /bin/false
+    state: present
+    system: yes
+  become: yes
+
+- name: Set up firewall SSH rule
+  community.general.ufw:
+    rule: allow
+    name: OpenSSH
+  become: yes
+
+- name: Set up firewall HTTP rule
+  community.general.ufw:
+    rule: allow
+    to_port: '80'
+  become: yes
+
+- name: Set up firewall HTTPS rule
+  community.general.ufw:
+    rule: allow
+    to_port: '443'
+  become: yes
+
+- name: Enable firewall
+  community.general.ufw:
+    state: enabled
+    policy: deny
+  become: yes
