@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	_ "embed"
@@ -10,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -20,7 +17,6 @@ import (
 	"github.com/CuteAP/fediverse.express/server/digitalocean"
 	"github.com/CuteAP/fediverse.express/templates"
 	ansibler "github.com/apenella/go-ansible"
-	"github.com/asaskevich/govalidator"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/joho/godotenv"
@@ -38,59 +34,6 @@ var (
 	status map[string]*Status = make(map[string]*Status)
 )
 
-func respondWithHTML(ctx *fiber.Ctx, html string) error {
-	ctx.Status(200)
-	ctx.Set("Content-Type", "text/html")
-	ctx.SendString(fmt.Sprintf("%s %s %s", templates.Header, html, templates.Footer))
-	return nil
-}
-
-func verifyDomain(ctx *fiber.Ctx, domain string) error {
-	session := ctx.Locals("session").(*session.Session)
-
-	if session.Get("ipv4") == nil {
-		return errors.New("no ipv4 on record")
-	}
-
-	ipv4 := session.Get("ipv4").(*string)
-	ipv6, ok := session.Get("ipv6").(*string)
-	if !ok {
-		invalid := "invalid"
-		ipv6 = &invalid
-	}
-
-	if domain == "" {
-		return errors.New("hostname was empty")
-	}
-
-	if !govalidator.IsDNSName(domain) {
-		return errors.New("invalid domain name")
-	}
-
-	if strings.Index(domain, "_") > -1 {
-		return errors.New("Let's Encrypt will not issue certificates for domains containing underscores")
-	}
-
-	addrs, err := net.LookupHost(domain)
-	if err != nil {
-		log.Printf("Error looking up %s: %v", domain, err)
-		return errors.New("error looking up domain name")
-	}
-
-	if len(addrs) == 0 {
-		return errors.New("host has no defined addresses. Did you set up your DNS correctly?")
-	}
-
-	for _, addr := range addrs {
-		if addr != *ipv4 && addr != *ipv6 {
-			log.Printf("Non-matching record %s", addr)
-			return errors.New("found a non-matching record on your domain. Did you set up your DNS correctly?")
-		}
-	}
-
-	return nil
-}
-
 func main() {
 	godotenv.Load()
 
@@ -98,92 +41,6 @@ func main() {
 
 	app := fiber.New()
 	store = session.New()
-
-	app.Use(func(ctx *fiber.Ctx) error {
-		session, err := store.Get(ctx)
-		if err != nil {
-			log.Fatalf("Could not create session: %v", err)
-		}
-
-		ctx.Locals("session", session)
-		ctx.Next()
-		return nil
-	})
-
-	app.Get("/", func(ctx *fiber.Ctx) error {
-		return respondWithHTML(ctx, templates.Index)
-	})
-
-	app.All("/login/:provider", func(ctx *fiber.Ctx) error {
-		prov, ok := providers[ctx.Params("provider", "invalid")]
-
-		if !ok {
-			log.Printf("Client requested unimplemented provider %s", ctx.Params("provider"))
-			ctx.Redirect("/")
-			return nil
-		}
-
-		session := ctx.Locals("session").(*session.Session)
-
-		if prov.OAuth2() != nil {
-			st := session.Get("state")
-			if st == nil || st != ctx.Query("state", "invalid") || ctx.Query("code") == "" {
-				log.Printf("Error: could not find one of state, code. st=%s, state=%s, code nil? %t", st, ctx.Query("state", "invalid"), ctx.Query("code") == "")
-				return redirectWithState(prov, ctx)
-			}
-
-			token, err := prov.OAuth2().Exchange(context.Background(), ctx.Query("code"))
-			if err != nil {
-				log.Printf("Error exchanging code: %v", err)
-				return redirectWithState(prov, ctx)
-			}
-
-			session.Set("provider", ctx.Params("provider"))
-			session.Set("accessToken", token.AccessToken)
-		} else {
-			var err error
-
-			if ctx.Method() == "POST" {
-				err = prov.ValidateCredentials(ctx, session)
-			} else {
-				// lol
-				err = errors.New("Log in with the following instructions:")
-			}
-
-			if err != nil {
-				info, items := prov.EnterCredentials()
-
-				cx := ""
-				for i, desc := range items {
-					cx += fmt.Sprintf("<b>%s</b> <input type='password' name='%s' /><br>", desc, i)
-				}
-
-				return respondWithHTML(ctx, err.Error()+"<br><br>"+fmt.Sprintf(templates.Prov, info, cx))
-			}
-		}
-
-		privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
-		if err != nil || privateKey.Validate() != nil {
-			log.Fatalf("Could not generate RSA keys: %v", err)
-			return nil
-		}
-
-		session.Set("privateKey", privateKey)
-
-		session.Save()
-
-		if session.Get("step") != nil {
-			ctx.Redirect(strings.Replace("step/"+session.Get("step").(string), "/", "", -1))
-			return nil
-		}
-
-		ctx.Redirect("/step/provision")
-		return nil
-	})
-
-	app.Get("/contact", func(ctx *fiber.Ctx) error {
-		return respondWithHTML(ctx, templates.Contact)
-	})
 
 	app.Use(func(ctx *fiber.Ctx) error {
 		if strings.HasPrefix(string(ctx.Context().Path()), "/step/") {
