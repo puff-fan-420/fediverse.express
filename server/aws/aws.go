@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CuteAP/fediverse.express/server"
+	"github.com/CuteAP/fediverse.express/server/srvcommon"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	awss "github.com/aws/aws-sdk-go/aws/session"
@@ -82,7 +82,7 @@ func (s *AWS) CreateSSHKey(token string, sshKey string) (interface{}, error) {
 	ecx := ec2.New(sess)
 
 	eo, err := ecx.ImportKeyPair(&ec2.ImportKeyPairInput{
-		KeyName:           aws.String(server.RandomString(10) + ".fediverse.express"),
+		KeyName:           aws.String(srvcommon.RandomString(10) + ".fediverse.express"),
 		PublicKeyMaterial: []byte(sshKey),
 	})
 	if err != nil {

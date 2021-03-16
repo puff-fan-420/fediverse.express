@@ -1,8 +1,8 @@
-package server
+package srvcommon
 
 import (
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/session"
 	"golang.org/x/oauth2"
 )
 

@@ -2,34 +2,28 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"strings"
 
+	"github.com/CuteAP/fediverse.express/server/endpoints/steps"
+	"github.com/CuteAP/fediverse.express/server/srvcommon"
 	"github.com/CuteAP/fediverse.express/templates"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
 )
 
 type Server struct {
-	store     *session.Store
-	providers map[string]Provider
-	status    map[string]*Status // ???????????????
-	app       *fiber.App
+	store       *session.Store
+	providers   map[string]srvcommon.Provider
+	app         *fiber.App
+	stepHandler *steps.Steps
 }
 
-// New creates a new instance of the HTTP
-// server
-func New() (*Server, error) {
-	srv := &Server{
-		app:   fiber.New(),
-		store: session.New(),
-	}
-
-	// Add middlewares
-	// TODO: middlewares in respective registrations
-	srv.app.Use(func(ctx *fiber.Ctx) error {
-		session, err := srv.store.Get(ctx)
+// registerMiddlewares registers supported middlewares to the
+// HTTP server and must be called before Listen
+func (s *Server) registerMiddlewares() {
+	s.app.Use(func(ctx *fiber.Ctx) error {
+		session, err := s.store.Get(ctx)
 		if err != nil {
 			log.Fatalf("Could not create session: %v", err)
 		}
@@ -38,7 +32,7 @@ func New() (*Server, error) {
 		ctx.Next()
 		return nil
 	})
-	srv.app.Use(func(ctx *fiber.Ctx) error {
+	s.app.Use(func(ctx *fiber.Ctx) error {
 		if strings.HasPrefix(string(ctx.Context().Path()), "/step/") {
 			session := ctx.Locals("session").(*session.Session)
 
@@ -52,30 +46,61 @@ func New() (*Server, error) {
 		ctx.Next()
 		return nil
 	})
+}
+
+// registerRoutes registers the top-level endpoints with
+// the router and calls the sub-handlers' router registration
+// methods; must be called before Listen
+func (s *Server) registerRoutes() {
+	// Register base endpoints
+	s.app.Get("/", s.index)
+	s.app.Get("/contact", s.contact)
+	s.app.All("/login/:provider", s.login)
+	s.app.Get("/logout", s.logout)
+
+	// Register the step handler and register its endpoints
+	s.stepHandler = steps.New(s.app, s.toKeysProviders())
+	s.stepHandler.Register()
+}
+
+// New creates a new instance of the HTTP server
+func New(providers map[string]srvcommon.Provider) *Server {
+	srv := &Server{
+		app:       fiber.New(),
+		store:     session.New(),
+		providers: providers,
+	}
+
+	// Add middlewares
+	srv.registerMiddlewares()
 
 	// Register endpoints
-	srv.app.Get("/", srv.index)
-	srv.app.Get("/contact", srv.contact)
-	srv.app.All("/login/:provider", srv.login)
+	srv.registerRoutes()
+
+	return srv
+}
+
+// Listen begins HTTP listening on the given address
+func (s *Server) Listen(addr string) error {
+	return s.app.Listen(addr)
+}
+
+// toKeysProviders converts the Providers stored in the server object to
+// a map of their component SSHKeyProviders
+func (s *Server) toKeysProviders() map[string]srvcommon.SSHKeyProvider {
+	result := make(map[string]srvcommon.SSHKeyProvider, len(s.providers))
+	for key, value := range s.providers {
+		result[key] = value
+	}
+	return result
 }
 
 func (Server) index(ctx *fiber.Ctx) error {
-	respondWithHTML(ctx, templates.Index)
+	srvcommon.RespondWithHTML(ctx, templates.Index)
 	return nil
 }
 
 func (Server) contact(ctx *fiber.Ctx) error {
-	respondWithHTML(ctx, templates.Contact)
+	srvcommon.RespondWithHTML(ctx, templates.Contact)
 	return nil
-}
-
-type Status struct {
-	Error error
-	Done  bool
-}
-
-func respondWithHTML(ctx *fiber.Ctx, html string) {
-	ctx.Status(200)
-	ctx.Set("Content-Type", "text/html")
-	ctx.SendString(fmt.Sprintf("%s %s %s", templates.Header, html, templates.Footer))
 }

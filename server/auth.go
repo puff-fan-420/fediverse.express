@@ -9,6 +9,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/CuteAP/fediverse.express/server/srvcommon"
 	"github.com/CuteAP/fediverse.express/templates"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
@@ -29,13 +30,15 @@ func (s *Server) login(ctx *fiber.Ctx) error {
 		st := session.Get("state")
 		if st == nil || st != ctx.Query("state", "invalid") || ctx.Query("code") == "" {
 			log.Printf("Error: could not find one of state, code. st=%s, state=%s, code nil? %t", st, ctx.Query("state", "invalid"), ctx.Query("code") == "")
-			return redirectWithState(prov, ctx)
+			srvcommon.RedirectWithState(prov, ctx)
+			return nil
 		}
 
 		token, err := prov.OAuth2().Exchange(context.Background(), ctx.Query("code"))
 		if err != nil {
 			log.Printf("Error exchanging code: %v", err)
-			return redirectWithState(prov, ctx)
+			srvcommon.RedirectWithState(prov, ctx)
+			return nil
 		}
 
 		session.Set("provider", ctx.Params("provider"))
@@ -58,7 +61,7 @@ func (s *Server) login(ctx *fiber.Ctx) error {
 				cx += fmt.Sprintf("<b>%s</b> <input type='password' name='%s' /><br>", desc, i)
 			}
 
-			respondWithHTML(ctx, err.Error()+"<br><br>"+fmt.Sprintf(templates.Prov, info, cx))
+			srvcommon.RespondWithHTML(ctx, err.Error()+"<br><br>"+fmt.Sprintf(templates.Prov, info, cx))
 			return nil
 		}
 	}
@@ -79,5 +82,11 @@ func (s *Server) login(ctx *fiber.Ctx) error {
 	}
 
 	ctx.Redirect("/step/provision")
+	return nil
+}
+
+func (Server) logout(ctx *fiber.Ctx) error {
+	ctx.Locals("session").(*session.Session).Destroy()
+	ctx.Redirect("/")
 	return nil
 }
