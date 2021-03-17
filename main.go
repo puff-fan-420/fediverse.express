@@ -20,7 +20,7 @@ func main() {
 	godotenv.Load()
 
 	providers := map[string]srvcommon.Provider{
-		"digitalocean": &digitalocean.DigitalOcean{},
+		"digitalocean": digitalocean.New(),
 		"aws":          &aws.AWS{},
 	}
 	// Initialize the HTTP server and begin listening
